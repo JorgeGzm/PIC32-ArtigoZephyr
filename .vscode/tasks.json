@@ -1,0 +1,89 @@
+{
+	"version": "2.0.0",
+	"options": {
+		"env": {
+			"VIRTUAL_ENV": "${env:HOME}/zephyrproject/.venv",
+			"ZEPHYR_BASE": "${env:HOME}/zephyrproject/zephyr",
+			"ZEPHYR_SDK_INSTALL_DIR": "${env:HOME}/zephyr-sdk-1.0.1",
+			"BOARD": "pic32cm1216mc"
+		}
+	},
+	"tasks": [
+		{
+			"label": "build",
+			"type": "shell",
+			"group": { "kind": "build", "isDefault": true },
+			"presentation": { "group": "firmware" },
+			"command": "bash",
+			"args": [
+				"-c",
+				"export PATH=${VIRTUAL_ENV}/bin:$PATH && cd ${env:HOME}/zephyrproject && west build -b ${BOARD} -p always -s ${workspaceFolder}/app -d ${workspaceFolder}/app/build"
+			],
+			"problemMatcher": ["$gcc"]
+		},
+		{
+			"label": "build debug",
+			"type": "shell",
+			"group": "build",
+			"presentation": { "group": "firmware" },
+			"command": "bash",
+			"args": [
+				"-c",
+				"export PATH=${VIRTUAL_ENV}/bin:$PATH && cd ${env:HOME}/zephyrproject && west build -b ${BOARD} -p always -s ${workspaceFolder}/app -d ${workspaceFolder}/app/build -- -DEXTRA_CONF_FILE=debug.conf"
+			],
+			"problemMatcher": ["$gcc"]
+		},
+		{
+			"label": "flash",
+			"type": "shell",
+			"presentation": { "group": "firmware" },
+			"command": "bash",
+			"args": [
+				"-c",
+				"export PATH=${VIRTUAL_ENV}/bin:$PATH && cd ${env:HOME}/zephyrproject && west flash -d ${workspaceFolder}/app/build"
+			],
+			"problemMatcher": ["$gcc"]
+		},
+		{
+			"label": "gdbserver",
+			"type": "shell",
+			"isBackground": true,
+			"dependsOn": ["build"],
+			"dependsOrder": "sequence",
+			"presentation": { "group": "firmware" },
+			"command": "bash",
+			"args": [
+				"-c",
+				"export PATH=${VIRTUAL_ENV}/bin:$PATH && fuser -k 3333/tcp 2>/dev/null; sleep 0.3; exec pyocd gdbserver --port 3333 --target ${BOARD}00032"
+			],
+			"problemMatcher": {
+				"owner": "pyocd",
+				"pattern": { "regexp": "^\\b$" },
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": ".",
+					"endsPattern": "GDB server listening on port"
+				}
+			}
+		},
+		{
+			"label": "kill gdbserver",
+			"type": "shell",
+			"presentation": { "group": "firmware" },
+			"command": "bash",
+			"args": [ "-c", "fuser -k 3333/tcp 2>/dev/null; true" ],
+			"problemMatcher": []
+		},
+		{
+			"label": "run",
+			"type": "shell",
+			"presentation": { "group": "software" },
+			"command": "make",
+			"args": ["gui"],
+			"options": {
+				"cwd": "${workspaceFolder}/software"
+			},
+			"problemMatcher": []
+		}
+	]
+}

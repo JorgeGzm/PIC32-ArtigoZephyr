@@ -1,0 +1,84 @@
+/*
+ * Out-of-tree board: Microchip PIC32CM MC00 Curiosity Nano (EV10N93A),
+ * MCU PIC32CM1216MC00032.
+ *
+ * Built as Atmel SAMC21E17A (silicon-equivalent): 128 KiB flash, 16 KiB RAM.
+ *
+ * Console/LED/button pins are taken from the Microchip "Getting Started"
+ * demo for this kit (SERCOM1 console on PA00/PA01, LED0 on PA23, SW0 on PA22).
+ */
+
+/dts-v1/;
+
+#include <atmel/samc21.dtsi>
+#include <atmel/samx2xx17.dtsi>
+#include "pic32cm1216mc-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "PIC32CM MC00 Curiosity Nano (PIC32CM1216MC00032)";
+	compatible = "microchip,pic32cm1216mc", "atmel,samc21e17a", "atmel,samc21";
+
+	chosen {
+		zephyr,console = &sercom1;
+		zephyr,shell-uart = &sercom1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,canbus = &can0;
+	};
+
+	aliases {
+		led0 = &led0;
+		sw0 = &user_button;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		/* LED0 on PA23 (active-low, per the Curiosity Nano convention). */
+		led0: led_0 {
+			gpios = <&porta 23 GPIO_ACTIVE_LOW>;
+			label = "LED0";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		/* SW0 on PA22 (EIC ch.6 in the demo; pull-up, active-low). */
+		user_button: button_0 {
+			gpios = <&porta 22 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "SW0";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+};
+
+&cpu0 {
+	clock-frequency = <48000000>;
+};
+
+/* Reserve the last 16 KiB of the 128 KiB flash for NVS config storage. */
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		storage_partition: partition@1c000 {
+			label = "storage";
+			reg = <0x0001c000 0x00004000>;
+		};
+	};
+};
+
+/* Console / shell UART (debugger CDC virtual COM port) */
+&sercom1 {
+	status = "okay";
+	compatible = "atmel,sam0-uart";
+	current-speed = <115200>;
+	rxpo = <1>;
+	txpo = <0>;
+	pinctrl-0 = <&sercom1_uart_default>;
+	pinctrl-names = "default";
+};

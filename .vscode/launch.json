@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PIC32CM (nEDBG/pyOCD)",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/app/build/zephyr/zephyr.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "external",
+            "gdbTarget": "localhost:3333",
+            "preLaunchTask": "gdbserver",
+            "postDebugTask": "kill gdbserver",
+            "toolchainPrefix": "arm-zephyr-eabi",
+            "armToolchainPath": "${env:HOME}/zephyr-sdk-1.0.1/arm-zephyr-eabi/bin",
+            "gdbPath": "${env:HOME}/zephyr-sdk-1.0.1/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb",
+            "runToEntryPoint": "main",
+            "overrideLaunchCommands": [
+                "monitor reset halt",
+                "load",
+                "monitor reset halt"
+            ],
+            "overrideRestartCommands": [
+                "monitor reset halt"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+# Zephyr / CMake build output (any "build" dir, e.g. app/build)
+build/
+
+# Python Modbus software (software/)
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/

@@ -1,0 +1,9 @@
+# Out-of-tree board for the Microchip PIC32CM1216MC00032 (PIC32CM MC family).
+# The PIC32CM MC is silicon-equivalent to the Atmel SAM C21; this part maps to
+# the SAMC21E17A (128 KiB flash / 16 KiB RAM / 32-pin).
+board:
+  name: pic32cm1216mc
+  full_name: PIC32CM1216MC00032 (custom board, SAMC21E17A)
+  vendor: microchip
+  socs:
+    - name: samc21e17a

@@ -1,0 +1,6 @@
+# PIC32CM MC Modbus client
+pymodbus>=3.6,<3.10
+pyserial>=3.5
+
+# GUI (same toolkit as the sirius-python reference project)
+PySide6>=6.6,<6.9

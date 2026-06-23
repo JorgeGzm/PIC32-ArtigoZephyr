@@ -1,0 +1,145 @@
+/*
+ * PIC32CM1216MC00032 (SAMC21E17A) - application devicetree overlay
+ * (auto-applied for board pic32cm1216mc)
+ *
+ * Adds on top of the board:
+ *   - SERCOM2 as the Modbus RTU UART (RS-485, with DE pin) on the header pins
+ *     PA14 (TX) / PA15 (RX); RS-485 driver-enable (DE/RE tied) on PA10.
+ *   - SERCOM0 as I2C for two sensors on the same bus:
+ *       * Sensirion SHT3x temperature/humidity  @ 0x44
+ *       * ST VL53L0X time-of-flight distance     @ 0x29
+ *
+ * SERCOM1 stays the console (board dts, debugger CDC). CAN0 is enabled by SoC.
+ *
+ * Pin assignment matches the Curiosity Nano silkscreen:
+ *   PA14_UART-TX-S2P2, PA15_UART-RX-S2P3 (SERCOM2),
+ *   PA8_I2C-SDA_S0P0,  PA9_I2C-SCL_S0P1  (SERCOM0).
+ * NOTE: the kit has NO on-board I2C pull-ups (R203/R204 are DNP). Rely on the
+ * sensor breakouts' own pull-ups, or add ~4.7k from SDA/SCL to VTG (3.3V).
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <dt-bindings/pinctrl/samc21n-pinctrl.h>
+
+/ {
+	aliases {
+		modbus-uart = &sercom2;
+		sht3x = &sht3xd;
+		tof0 = &vl53l0x;
+		keypad = &keypad_mcp;
+	};
+
+	chosen {
+		zephyr,display = &oled;
+	};
+};
+
+&pinctrl {
+	/* Modbus UART: SERCOM2 TX=PA14 (PAD2), RX=PA15 (PAD3) */
+	sercom2_uart_default: sercom2_uart_default {
+		group1 {
+			pinmux = <PA14C_SERCOM2_PAD2>,
+				 <PA15C_SERCOM2_PAD3>;
+		};
+	};
+
+	/* I2C: SERCOM0 SDA=PA08 (PAD0), SCL=PA09 (PAD1) */
+	sercom0_i2c_default: sercom0_i2c_default {
+		group1 {
+			pinmux = <PA8C_SERCOM0_PAD0>,
+				 <PA9C_SERCOM0_PAD1>;
+		};
+	};
+};
+
+/* ---- Modbus RTU serial line (RS-485) ---- */
+&sercom2 {
+	status = "okay";
+	compatible = "atmel,sam0-uart";
+	current-speed = <115200>;
+	rxpo = <3>;	/* RX on PAD3 (PA15) */
+	txpo = <1>;	/* TX on PAD2 (PA14) */
+	pinctrl-0 = <&sercom2_uart_default>;
+	pinctrl-names = "default";
+
+	app_modbus: modbus0 {
+		compatible = "zephyr,modbus-serial";
+		status = "okay";
+		/* RS-485 driver-enable (MAX485 DE+RE tied together) on PA10. */
+		de-gpios = <&porta 10 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+/* ---- Watchdog (8 s, fed by the main loop) on the internal OSCULP32K ---- */
+&wdog {
+	status = "okay";
+};
+
+/* ---- Internal RTC (calendar) on the always-on OSCULP32K (no crystal).
+ *      The board's 32.768 kHz crystal shares PA00/PA01 with the console,
+ *      so we keep the console and run the RTC off the internal oscillator. */
+&rtc {
+	status = "okay";
+	counter-mode = "clock";
+	prescaler = <1024>;
+};
+
+/* ---- I2C bus + two sensors (SHT3x + VL53L0X) ---- */
+&sercom0 {
+	status = "okay";
+	compatible = "atmel,sam0-i2c";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-0 = <&sercom0_i2c_default>;
+	pinctrl-names = "default";
+
+	sht3xd: sht3xd@44 {
+		compatible = "sensirion,sht3xd";
+		reg = <0x44>;
+		status = "okay";
+	};
+
+	vl53l0x: vl53l0x@29 {
+		compatible = "st,vl53l0x";
+		reg = <0x29>;
+		status = "okay";
+	};
+
+	/* HW-LYT-00005 shield: SSD1306 128x64 OLED @ 0x3D (STM32 uses ADDR2=0x7A).
+	 * LCD_RESET routed to PA02 (active-low), like the STM32's PB5. */
+	oled: ssd1306@3d {
+		compatible = "solomon,ssd1306";
+		reg = <0x3d>;
+		width = <128>;
+		height = <64>;
+		segment-offset = <0>;
+		page-offset = <0>;
+		display-offset = <0>;
+		multiplex-ratio = <63>;
+		/* segment-remap + com-invdir together = 180deg. This shield mounts
+		 * the panel the other way up, so both are omitted (0deg). */
+		prechargep = <0x22>;
+		/* Normal video (black bg, white text). The header bar is drawn by
+		 * inverting just the title band -> white bar with black title,
+		 * matching the STM32 IHM look. */
+		/* Shared shield RESET line (connector pin 3) -> PA02. */
+		reset-gpios = <&porta 2 GPIO_ACTIVE_LOW>;
+	};
+
+	/* HW-LYT-00005 shield: MCP23008 GPIO expander @ 0x23.
+	 *   P0..P3 = 4 status LEDs, P4..P7 = keys (UP/DOWN/CANCEL/ENTER).
+	 * Shared shield RESET line (connector pin 3) -> PA02 (same as the OLED).
+	 * INT line (connector pin 1) -> PA03 (active-low) for event-driven keys. */
+	keypad_mcp: mcp23008@23 {
+		compatible = "microchip,mcp23008";
+		reg = <0x23>;
+		status = "okay";
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <8>;
+		reset-gpios = <&porta 2 GPIO_ACTIVE_LOW>;
+		int-gpios = <&porta 3 GPIO_ACTIVE_LOW>;
+	};
+};

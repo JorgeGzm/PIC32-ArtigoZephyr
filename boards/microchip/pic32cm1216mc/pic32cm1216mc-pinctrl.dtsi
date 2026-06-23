@@ -1,0 +1,19 @@
+/*
+ * PIC32CM MC00 Curiosity Nano (PIC32CM1216MC00032 / SAMC21E17A) - pin control.
+ *
+ * Console pins taken from the Microchip "Getting Started" demo
+ * (pic32cm_mc_cnano.X): SERCOM1 on PA00 (TX) / PA01 (RX), routed to the
+ * on-board debugger's CDC virtual COM port.
+ */
+
+#include <dt-bindings/pinctrl/samc21n-pinctrl.h>
+
+&pinctrl {
+	/* Console UART: SERCOM1  TX=PA00 (PAD0), RX=PA01 (PAD1) */
+	sercom1_uart_default: sercom1_uart_default {
+		group1 {
+			pinmux = <PA0D_SERCOM1_PAD0>,
+				 <PA1D_SERCOM1_PAD1>;
+		};
+	};
+};
